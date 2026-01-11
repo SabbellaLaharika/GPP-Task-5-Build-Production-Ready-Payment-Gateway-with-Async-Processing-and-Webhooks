@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: payment_gateway_db
+    environment:
+      POSTGRES_DB: payment_gateway
+      POSTGRES_USER: gateway_user
+      POSTGRES_PASSWORD: gateway_pass
+    ports:
+      - "5440:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_user -d payment_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - payment-network
+
+  # Backend API
+  backend:
+    image: sabbellalaharika/payment-gateway-backend:latest
+    container_name: payment_gateway_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payment_gateway
+      - SPRING_DATASOURCE_USERNAME=gateway_user
+      - SPRING_DATASOURCE_PASSWORD=gateway_pass
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - payment-network
+    restart: unless-stopped
+
+  # Frontend Dashboard
+  frontend:
+    image: sabbellalaharika/payment-gateway-frontend:latest
+    container_name: payment_gateway_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - payment-network
+    restart: unless-stopped
+
+  # Checkout Page
+  checkout:
+    image: sabbellalaharika/payment-gateway-checkout:latest
+    container_name: payment_gateway_checkout
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+    networks:
+      - payment-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  payment-network:
+    driver: bridge
