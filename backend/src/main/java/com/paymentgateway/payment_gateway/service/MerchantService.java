@@ -30,13 +30,18 @@ public class MerchantService {
             testMerchant.setEmail(testEmail);
             testMerchant.setApiKey("key_test_abc123");
             testMerchant.setApiSecret("secret_test_xyz789");
+            testMerchant.setWebhookUrl(null);  // Optional
+            testMerchant.setWebhookSecret("whsec_test_abc123");  // 🆕 NEW: Set for test merchant
             testMerchant.setIsActive(true);
+            testMerchant.setCreatedAt(LocalDateTime.now());
+            testMerchant.setUpdatedAt(LocalDateTime.now());
             
             Merchant saved = merchantRepository.save(testMerchant);
             System.out.println("✅ Test merchant created with ID: " + saved.getId());
-            System.out.println("   Email: " + testEmail);
-            System.out.println("   API Key: key_test_abc123");
-            System.out.println("   API Secret: secret_test_xyz789");
+            System.out.println("   Email: " + saved.getEmail());
+            System.out.println("   API Key: " + saved.getApiKey());
+            System.out.println("   API Secret: secret_test_xyz789" + saved.getApiSecret());
+            
         } else {
             System.out.println("ℹ️  Test merchant already exists (ID: " + existingMerchant.get().getId() + ")");
             System.out.println("   Email: " + testEmail);

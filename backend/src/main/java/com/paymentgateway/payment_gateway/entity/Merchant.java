@@ -34,6 +34,9 @@ public class Merchant {
 
     @Column(name = "webhook_url", length = 255)
     private String webhookUrl;
+    
+    @Column(name = "webhook_secret", length = 64)
+    private String webhookSecret;  // Webhook secret for HMAC signature generation
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
