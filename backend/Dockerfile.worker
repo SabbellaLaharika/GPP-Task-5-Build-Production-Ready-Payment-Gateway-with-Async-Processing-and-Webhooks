@@ -1,33 +1,41 @@
-# Multi-stage build
-FROM eclipse-temurin:21-jdk-alpine AS build
+# ================================
+# BUILD STAGE (same as backend)
+# ================================
+FROM maven:3.9-eclipse-temurin-21 AS build
 
+# Set working directory
 WORKDIR /app
 
-# Copy Maven files
+# Copy pom.xml first for dependency caching
 COPY pom.xml .
-COPY .mvn .mvn
-COPY mvnw .
 
 # Download dependencies
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # Copy source code
 COPY src ./src
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Build application JAR (skip tests)
+RUN mvn clean package -DskipTests
 
-# Runtime stage
+
+# ================================
+# RUNTIME STAGE (Worker Mode)
+# ================================
 FROM eclipse-temurin:21-jre-alpine
 
+# Set working directory
 WORKDIR /app
 
-# Copy the JAR from build stage
+# Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Worker-specific configuration
+# JVM memory limits for worker
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
+
+# Flag to indicate worker mode (optional, for code logic)
 ENV WORKER_MODE=true
 
-# Run the worker (not the web server)
+# IMPORTANT:
+# Disable web server because this is a background worker
 ENTRYPOINT ["java", "-jar", "app.jar", "--spring.main.web-application-type=none"]
