@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.util.UUID;
 import java.time.LocalDateTime;
 
 @Entity
@@ -83,4 +84,13 @@ public class Payment {
         }
         return result.toString();
     }
+
+    // public UUID getMerchantId() {
+    //     return merchant != null ? merchant.getId() : null;
+    // }
+
+    // public String getOrderId() {
+    //     return order != null ? order.getId() : null;
+    // }
+
 }
