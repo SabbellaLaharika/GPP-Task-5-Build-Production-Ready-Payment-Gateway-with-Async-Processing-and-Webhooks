@@ -85,6 +85,28 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
+    @Transactional
+    public Payment capturePayment(String paymentId, Integer amount) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+        if (!"success".equals(payment.getStatus())) {
+            throw new IllegalArgumentException("Payment is not in a successful state");
+        }
+
+        if (Boolean.TRUE.equals(payment.getCaptured())) {
+            throw new IllegalArgumentException("Payment already captured");
+        }
+        
+        if (amount == null || amount <= 0) {
+             throw new IllegalArgumentException("Invalid capture amount");
+        }
+
+        payment.setCaptured(true);
+        
+        return paymentRepository.save(payment);
+    }
+
     public Optional<Payment> findById(String paymentId) {
         return paymentRepository.findById(paymentId);
     }

@@ -253,6 +253,59 @@ public class PaymentController {
                     .body(new ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred"));
         }
     }
+
+    // Capture Payment Endpoint
+    @PostMapping("/{paymentId}/capture")
+    public ResponseEntity<?> capturePayment(
+            @RequestHeader("X-Api-Key") String apiKey,
+            @RequestHeader("X-Api-Secret") String apiSecret,
+            @PathVariable String paymentId,
+            @RequestBody com.paymentgateway.payment_gateway.dto.CaptureRequest request) {
+
+        try {
+            // Validate API credentials
+            Optional<Merchant> merchantOpt = merchantService.findByApiKey(apiKey);
+            if (merchantOpt.isEmpty() || !merchantOpt.get().getApiSecret().equals(apiSecret)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ErrorResponse("AUTHENTICATION_ERROR", "Invalid API credentials"));
+            }
+            
+            Merchant merchant = merchantOpt.get();
+            
+            // Check if payment belongs to merchant is handled implicitly by service if we passed merchantId, 
+            // but here we fetch by ID. Ideally we should verify ownership.
+            Optional<Payment> paymentOpt = paymentService.findById(paymentId);
+            if (paymentOpt.isPresent() && !paymentOpt.get().getMerchant().getId().equals(merchant.getId())) {
+                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("NOT_FOUND_ERROR", "Payment not found"));
+            }
+
+            Payment payment = paymentService.capturePayment(paymentId, request.getAmount());
+
+            // Build response
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", payment.getId());
+            response.put("order_id", payment.getOrder().getId());
+            // response.put("merchant_id", merchant.getId()); // Optional in response
+            response.put("amount", payment.getAmount());
+            response.put("currency", payment.getCurrency());
+            response.put("method", payment.getMethod());
+            response.put("status", payment.getStatus());
+            response.put("captured", payment.getCaptured());
+            
+            response.put("created_at", payment.getCreatedAt().toString());
+            response.put("updated_at", payment.getUpdatedAt().toString());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("BAD_REQUEST_ERROR", e.getMessage())); // "Payment not in capturable state" maps here
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred"));
+        }
+    }
     // List All Payments Endpoint (for dashboard)
     @GetMapping
     public ResponseEntity<?> listPayments(
