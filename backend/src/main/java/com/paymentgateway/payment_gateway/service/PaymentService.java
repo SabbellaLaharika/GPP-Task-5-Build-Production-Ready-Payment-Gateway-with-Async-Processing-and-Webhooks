@@ -27,7 +27,7 @@ public class PaymentService {
         payment.setAmount(order.getAmount());
         payment.setCurrency(order.getCurrency());
         payment.setMethod(method);
-        payment.setStatus("processing"); // Set to processing immediately
+        payment.setStatus("pending"); // Set to pending initially
         
         // Set method-specific fields
         if ("upi".equals(method)) {

@@ -23,6 +23,9 @@ WORKDIR /app
 # Copy the built JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Expose port 8000
 EXPOSE 8000
 

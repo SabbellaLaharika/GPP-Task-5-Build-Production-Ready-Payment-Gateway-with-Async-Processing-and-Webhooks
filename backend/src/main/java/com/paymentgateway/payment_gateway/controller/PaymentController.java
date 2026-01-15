@@ -5,6 +5,11 @@ import com.paymentgateway.payment_gateway.dto.PaymentRequest;
 import com.paymentgateway.payment_gateway.entity.Merchant;
 import com.paymentgateway.payment_gateway.entity.Order;
 import com.paymentgateway.payment_gateway.entity.Payment;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paymentgateway.payment_gateway.entity.IdempotencyKey;
+import com.paymentgateway.payment_gateway.jobs.ProcessPaymentJob;
+import com.paymentgateway.payment_gateway.queue.JobQueue;
+import com.paymentgateway.payment_gateway.repository.IdempotencyKeyRepository;
 import com.paymentgateway.payment_gateway.service.MerchantService;
 import com.paymentgateway.payment_gateway.service.OrderService;
 import com.paymentgateway.payment_gateway.service.PaymentService;
@@ -14,12 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.ArrayList;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -29,12 +34,16 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final OrderService orderService;
     private final MerchantService merchantService;
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final JobQueue jobQueue;
+    private final ObjectMapper objectMapper;
     
     // Create Payment Endpoint
     @PostMapping
     public ResponseEntity<?> createPayment(
             @RequestHeader("X-Api-Key") String apiKey,
             @RequestHeader("X-Api-Secret") String apiSecret,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestBody PaymentRequest request) {
         
         try {
@@ -46,6 +55,23 @@ public class PaymentController {
             }
 
             Merchant merchant = merchantOpt.get();
+
+            // Idempotency Check
+            if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+                Optional<IdempotencyKey> existingKeyOpt = idempotencyKeyRepository.findByKeyAndMerchantId(idempotencyKey, java.util.UUID.fromString(merchant.getId()));
+                
+                if (existingKeyOpt.isPresent()) {
+                    IdempotencyKey existingKey = existingKeyOpt.get();
+                    if (existingKey.getExpiresAt().isAfter(LocalDateTime.now())) {
+                        // Return cached response
+                        Object cachedResponse = objectMapper.readValue(existingKey.getResponse(), Map.class);
+                        return ResponseEntity.status(HttpStatus.CREATED).body(cachedResponse);
+                    } else {
+                        // Expired - delete and process as new
+                        idempotencyKeyRepository.delete(existingKey);
+                    }
+                }
+            }
 
             // Validate order exists
             Optional<Order> orderOpt = orderService.findById(request.getOrderId());
@@ -119,8 +145,8 @@ public class PaymentController {
                     order, merchant, method, vpa, cardNetwork, cardLast4
             );
 
-            // Process payment asynchronously
-            CompletableFuture.runAsync(() -> paymentService.processPayment(payment));
+            // Enqueue Job for Async Processing
+            jobQueue.enqueuePaymentJob(payment.getId());
 
             // Build response
             Map<String, Object> response = new HashMap<>();
@@ -130,7 +156,7 @@ public class PaymentController {
             response.put("amount", payment.getAmount());
             response.put("currency", payment.getCurrency());
             response.put("method", payment.getMethod());
-            response.put("status", payment.getStatus());
+            response.put("status", payment.getStatus()); // Should be "pending"
             
             if ("upi".equals(method)) {
                 response.put("vpa", payment.getVpa());
@@ -140,7 +166,16 @@ public class PaymentController {
             }
             
             response.put("created_at", payment.getCreatedAt().toString());
-            response.put("updated_at", payment.getUpdatedAt().toString());
+            // response.put("updated_at", payment.getUpdatedAt().toString()); // Updated At might be null initially or same as created
+
+            // Store idempotency key if provided
+            if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+                IdempotencyKey keyRecord = new IdempotencyKey();
+                keyRecord.setKey(idempotencyKey);
+                keyRecord.setMerchantId(java.util.UUID.fromString(merchant.getId()));
+                keyRecord.setResponse(objectMapper.writeValueAsString(response));
+                idempotencyKeyRepository.save(keyRecord);
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
@@ -148,6 +183,7 @@ public class PaymentController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorResponse("BAD_REQUEST_ERROR", e.getMessage()));
         } catch (Exception e) {
+            e.printStackTrace(); // Log error
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred"));
         }
