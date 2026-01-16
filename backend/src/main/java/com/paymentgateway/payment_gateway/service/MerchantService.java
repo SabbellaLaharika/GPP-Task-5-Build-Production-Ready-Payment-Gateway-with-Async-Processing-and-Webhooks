@@ -66,4 +66,24 @@ public class MerchantService {
     public Merchant save(Merchant merchant) {
         return merchantRepository.save(merchant);
     }
+
+    @Transactional
+    public Merchant updateWebhookUrl(String merchantId, String webhookUrl) {
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found"));
+        merchant.setWebhookUrl(webhookUrl);
+        return merchantRepository.save(merchant);
+    }
+
+    @Transactional
+    public String regenerateWebhookSecret(String merchantId) {
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new RuntimeException("Merchant not found"));
+        
+        String newSecret = "whsec_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        merchant.setWebhookSecret(newSecret);
+        merchantRepository.save(merchant);
+        
+        return newSecret;
+    }
 }

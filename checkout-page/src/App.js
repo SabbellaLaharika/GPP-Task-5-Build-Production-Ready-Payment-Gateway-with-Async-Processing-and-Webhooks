@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_BASE_URL = window.location.hostname === 'localhost' 
+const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:8000'  // Development
   : '';  // Production (nginx proxy)
-  
+
 const TEST_MERCHANT = {
   apiKey: 'key_test_abc123',
   apiSecret: 'secret_test_xyz789'
@@ -17,48 +17,60 @@ function App() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // UPI fields
   const [vpa, setVpa] = useState('');
-  
+
   // Card fields
   const [cardNumber, setCardNumber] = useState('');
   const [expiryMonth, setExpiryMonth] = useState('');
   const [expiryYear, setExpiryYear] = useState('');
   const [cvv, setCvv] = useState('');
   const [holderName, setHolderName] = useState('');
-  
+
   // Payment state
   const [paymentId, setPaymentId] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
 
+  const [embedded, setEmbedded] = useState(false);
+
   // Get order_id from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderIdFromUrl = params.get('order_id');
+    const isEmbedded = params.get('embedded') === 'true';
+
+    setEmbedded(isEmbedded);
+
     if (orderIdFromUrl) {
       setOrderId(orderIdFromUrl);
       fetchOrder(orderIdFromUrl);
     }
   }, []);
 
+  const sendMessageToParent = (type, data) => {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type, data }, '*');
+    }
+  };
+
   const fetchOrder = async (orderId) => {
     try {
       setLoading(true);
       setError('');
-      
+
       const response = await axios.get(`${API_BASE_URL}/api/v1/orders/${orderId}`, {
         headers: {
           'X-Api-Key': TEST_MERCHANT.apiKey,
           'X-Api-Secret': TEST_MERCHANT.apiSecret
         }
       });
-      
+
       setOrder(response.data);
       if (response.data.status === 'paid') {
-      setError('This order has already been paid.');
-    }
+        setError('This order has already been paid.');
+      }
     } catch (err) {
       setError('Order not found. Please check the order ID.');
       console.error('Error fetching order:', err);
@@ -106,6 +118,10 @@ function App() {
       setError(err.response?.data?.description || 'Payment failed. Please try again.');
       setProcessingPayment(false);
       console.error('Error processing payment:', err);
+
+      sendMessageToParent('payment_failed', {
+        error: err.response?.data?.description || 'Payment failed'
+      });
     }
   };
 
@@ -121,9 +137,17 @@ function App() {
 
         setPaymentStatus(response.data.status);
 
-        if (response.data.status === 'success' || response.data.status === 'failed') {
+        if (response.data.status === 'success') {
           clearInterval(pollInterval);
           setProcessingPayment(false);
+          sendMessageToParent('payment_success', { paymentId: response.data.id });
+        } else if (response.data.status === 'failed') {
+          clearInterval(pollInterval);
+          setProcessingPayment(false);
+          sendMessageToParent('payment_failed', {
+            paymentId: response.data.id,
+            error: 'Payment processing failed'
+          });
         }
       } catch (err) {
         console.error('Error polling payment status:', err);
@@ -296,7 +320,7 @@ function App() {
           <h2>Payment Successful!</h2>
           <p data-test-id="payment-id">Payment ID: {paymentId}</p>
           <p data-test-id="success-message">Your payment has been processed successfully.</p>
-          
+
           {/* Add Print Receipt Button */}
           <button
             onClick={printReceipt}
@@ -331,7 +355,7 @@ function App() {
           <h2>Payment Failed</h2>
           <p data-test-id="payment-id">Payment ID: {paymentId}</p>
           <p data-test-id="error-message">Payment could not be processed. Please try again.</p>
-          <button 
+          <button
             data-test-id="retry-button"
             onClick={() => {
               setPaymentStatus('');
@@ -357,7 +381,7 @@ function App() {
       </div>
     );
   }
-  
+
   return (
     <div className="container" data-test-id="checkout-container">
       <div className="checkout-card">

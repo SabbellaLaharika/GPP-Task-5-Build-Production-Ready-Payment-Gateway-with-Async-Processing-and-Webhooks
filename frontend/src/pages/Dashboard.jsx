@@ -72,15 +72,15 @@ function Dashboard() {
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         marginBottom: '30px'
       }}>
-        <div style={{ 
-          maxWidth: '1200px', 
+        <div style={{
+          maxWidth: '1200px',
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <h1 style={{ margin: 0 }}>Payment Gateway Dashboard</h1>
-          <button 
+          <button
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
@@ -178,9 +178,9 @@ function Dashboard() {
           borderRadius: '8px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-         <h2>Quick Actions</h2>
+          <h2>Quick Actions</h2>
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-            <Link 
+            <Link
               to="/dashboard/create-order"
               style={{
                 display: 'inline-block',
@@ -193,7 +193,7 @@ function Dashboard() {
             >
               + Create New Order
             </Link>
-            <Link 
+            <Link
               to="/dashboard/transactions"
               style={{
                 display: 'inline-block',
@@ -205,6 +205,32 @@ function Dashboard() {
               }}
             >
               View All Transactions
+            </Link>
+            <Link
+              to="/dashboard/webhooks"
+              style={{
+                display: 'inline-block',
+                padding: '10px 20px',
+                backgroundColor: '#6610f2',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              Webhook Config
+            </Link>
+            <Link
+              to="/dashboard/docs"
+              style={{
+                display: 'inline-block',
+                padding: '10px 20px',
+                backgroundColor: '#17a2b8',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px'
+              }}
+            >
+              Request Documentation
             </Link>
           </div>
         </div>
