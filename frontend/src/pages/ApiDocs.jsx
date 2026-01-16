@@ -1,15 +1,36 @@
 import React from 'react';
 
 const ApiDocs = () => {
-    return (
-        <div className="container" data-test-id="api-docs">
-            <h2>Integration Guide</h2>
+  const handleLogout = () => {
+    localStorage.removeItem('merchantEmail');
+    window.location.href = '/login';
+  };
 
-            <section data-test-id="section-create-order" className="doc-section">
-                <h3>1. Create Order</h3>
-                <p>Create an order from your backend before initializing checkout.</p>
-                <pre data-test-id="code-snippet-create-order">
-                    <code>{`curl -X POST http://localhost:8000/api/v1/orders \\
+  return (
+    <div className="page-container">
+      <div className="dashboard-header">
+        <div className="header-inner">
+          <div className="header-left">
+            <a href="/dashboard" className="back-link">
+              ← Back to Dashboard
+            </a>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Integration Guide</h1>
+          </div>
+          <button onClick={handleLogout} className="btn btn-danger btn-sm">
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <div className="main-content">
+        <div className="card">
+          <h2>1. Create Order</h2>
+          <p style={{ marginBottom: '15px', color: '#666' }}>
+            First, create an order from your backend to get an <code>order_id</code>.
+          </p>
+          <div style={{ background: '#282c34', padding: '20px', borderRadius: '8px', overflowX: 'auto' }}>
+            <pre style={{ color: '#abb2bf', margin: 0 }}>
+              <code>{`curl -X POST http://localhost:8000/api/v1/orders \\
   -H "X-Api-Key: key_test_abc123" \\
   -H "X-Api-Secret: secret_test_xyz789" \\
   -H "Content-Type: application/json" \\
@@ -18,14 +39,18 @@ const ApiDocs = () => {
     "currency": "INR",
     "receipt": "receipt_123"
   }'`}</code>
-                </pre>
-            </section>
+            </pre>
+          </div>
+        </div>
 
-            <section data-test-id="section-sdk-integration" className="doc-section">
-                <h3>2. SDK Integration</h3>
-                <p>Include the SDK script and initialize the payment.</p>
-                <pre data-test-id="code-snippet-sdk">
-                    <code>{`<!-- Include SDK -->
+        <div className="card">
+          <h2>2. SDK Integration</h2>
+          <p style={{ marginBottom: '15px', color: '#666' }}>
+            Include the Javascript SDK in your frontend and initialize it with the <code>order_id</code>.
+          </p>
+          <div style={{ background: '#282c34', padding: '20px', borderRadius: '8px', overflowX: 'auto' }}>
+            <pre style={{ color: '#abb2bf', margin: 0 }}>
+              <code>{`<!-- Include SDK -->
 <script src="http://localhost:3001/checkout.js"></script>
 
 <script>
@@ -43,14 +68,18 @@ const checkout = new PaymentGateway({
 // Open Modal
 checkout.open();
 </script>`}</code>
-                </pre>
-            </section>
+            </pre>
+          </div>
+        </div>
 
-            <section data-test-id="section-webhook-verification" className="doc-section">
-                <h3>3. Verify Webhook Signature</h3>
-                <p>Verify the `X-Webhook-Signature` header matches the HMAC-SHA256 of the payload.</p>
-                <pre data-test-id="code-snippet-webhook">
-                    <code>{`const crypto = require('crypto');
+        <div className="card">
+          <h2>3. Verify Webhook Signature</h2>
+          <p style={{ marginBottom: '15px', color: '#666' }}>
+            Secure your webhooks by verifying the HMAC-SHA256 signature.
+          </p>
+          <div style={{ background: '#282c34', padding: '20px', borderRadius: '8px', overflowX: 'auto' }}>
+            <pre style={{ color: '#abb2bf', margin: 0 }}>
+              <code>{`const crypto = require('crypto');
 
 function verifyWebhook(payload, signature, secret) {
   const expectedSignature = crypto
@@ -60,10 +89,12 @@ function verifyWebhook(payload, signature, secret) {
 
   return signature === expectedSignature;
 }`}</code>
-                </pre>
-            </section>
+            </pre>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default ApiDocs;

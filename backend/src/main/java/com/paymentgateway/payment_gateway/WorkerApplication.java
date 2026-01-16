@@ -23,10 +23,13 @@ public class WorkerApplication {
         String workerMode = System.getenv("WORKER_MODE");
         
         if ("true".equals(workerMode)) {
-            log.info("Starting Worker Application...");
+            log.info("Starting Worker Application (Headless)...");
             SpringApplication.run(WorkerApplication.class, args);
+        } else if ("hybrid".equals(workerMode)) {
+            log.info("Starting Hybrid Application (API + Workers)...");
+            SpringApplication.run(PaymentGatewayApplication.class, args);
         } else {
-            log.info("Starting Main API Application...");
+            log.info("Starting Main API Application (No Workers)...");
             SpringApplication.run(PaymentGatewayApplication.class, args);
         }
     }
@@ -40,8 +43,9 @@ public class WorkerApplication {
         
         return args -> {
             String workerMode = System.getenv("WORKER_MODE");
-            if (!"true".equals(workerMode)) {
-                return; // Do not start workers in non-worker mode (e.g. Backend API)
+            // In 'hybrid' mode, we run both API and Workers. In 'true', only workers.
+            if (!"true".equals(workerMode) && !"hybrid".equals(workerMode)) {
+                return; // Do not start workers in non-worker mode (pure Backend API)
             }
 
             log.info("=================================================");

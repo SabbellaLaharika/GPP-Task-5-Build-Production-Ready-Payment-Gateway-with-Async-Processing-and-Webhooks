@@ -30,7 +30,7 @@ function Transactions() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch all payments
       // Note: Since we don't have a list endpoint yet, this will fail gracefully
       // In a real implementation, you'd have GET /api/v1/payments endpoint
@@ -40,7 +40,7 @@ function Transactions() {
           'X-Api-Secret': TEST_MERCHANT.apiSecret
         }
       });
-      
+
       setPayments(response.data || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -80,9 +80,33 @@ function Transactions() {
     }
   };
 
+  const handleRefund = async (paymentId) => {
+    const amount = prompt("Enter amount to refund (in Rupees):");
+    if (!amount) return;
+
+    try {
+      const amountInPaise = Math.round(parseFloat(amount) * 100);
+      await axios.post(`http://localhost:8000/api/v1/payments/${paymentId}/refunds`,
+        { amount: amountInPaise },
+        {
+          headers: {
+            'X-Api-Key': TEST_MERCHANT.apiKey,
+            'X-Api-Secret': TEST_MERCHANT.apiSecret,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      alert('Refund request submitted!');
+      fetchPayments(); // Refresh list
+    } catch (err) {
+      console.error("Refund failed", err);
+      alert('Refund failed: ' + (err.response?.data?.description || err.message));
+    }
+  };
+
   const printReceipt = (payment) => {
     const receiptWindow = window.open('', '_blank');
-    if (!receiptWindow)  alert("Popup blocked! Please allow popups.");
+    if (!receiptWindow) alert("Popup blocked! Please allow popups.");
     receiptWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -248,16 +272,16 @@ function Transactions() {
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         marginBottom: '30px'
       }}>
-        <div style={{ 
-          maxWidth: '1400px', 
+        <div style={{
+          maxWidth: '1400px',
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <Link 
-              to="/dashboard" 
+            <Link
+              to="/dashboard"
               style={{
                 textDecoration: 'none',
                 color: '#007bff',
@@ -268,7 +292,7 @@ function Transactions() {
             </Link>
             <h1 style={{ margin: 0 }}>Transactions</h1>
           </div>
-          <button 
+          <button
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
@@ -281,7 +305,7 @@ function Transactions() {
           >
             Logout
           </button>
-          <button 
+          <button
             onClick={fetchPayments}
             style={{
               padding: '10px 20px',
@@ -310,8 +334,8 @@ function Transactions() {
               Loading transactions...
             </div>
           ) : error ? (
-            <div style={{ 
-              textAlign: 'center', 
+            <div style={{
+              textAlign: 'center',
               padding: '40px',
               color: '#666'
             }}>
@@ -327,7 +351,7 @@ function Transactions() {
           ) : (
             <div style={{ overflowX: 'auto' }}>
 
-              <table 
+              <table
                 data-test-id="transactions-table"
                 style={{
                   width: '100%',
@@ -348,30 +372,30 @@ function Transactions() {
                 </thead>
                 <tbody>
                   {payments.map((payment) => (
-                    <tr 
+                    <tr
                       key={payment.id}
                       data-test-id={`transaction-row-${payment.id}`}
                       style={{ borderBottom: '1px solid #dee2e6' }}
                     >
-                      <td 
+                      <td
                         data-test-id="payment-id"
                         style={{ padding: '12px', fontFamily: 'monospace', fontSize: '12px' }}
                       >
                         {payment.id}
                       </td>
-                      <td 
+                      <td
                         data-test-id="order-id"
                         style={{ padding: '12px', fontFamily: 'monospace', fontSize: '12px' }}
                       >
                         {payment.order_id}
                       </td>
-                      <td 
+                      <td
                         data-test-id="amount"
                         style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}
                       >
                         {formatAmount(payment.amount)}
                       </td>
-                      <td 
+                      <td
                         data-test-id="method"
                         style={{ padding: '12px', textTransform: 'uppercase' }}
                       >
@@ -389,31 +413,43 @@ function Transactions() {
                           {payment.status}
                         </span>
                       </td>
-                      <td 
+                      <td
                         data-test-id="created-at"
                         style={{ padding: '12px', fontSize: '12px', color: '#666' }}
                       >
                         {formatDate(payment.created_at)}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <button
-                          onClick={() => printReceipt(payment)}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                          title="Print Receipt"
-                        >
-                          🖨️ Print
-                        </button>
+                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                          {payment.status === 'success' && (
+                            <button
+                              onClick={() => handleRefund(payment.id)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '6px 10px', fontSize: '12px', background: '#e2e8f0', color: '#333' }}
+                              title="Refund Payment"
+                            >
+                              ↩ Refund
+                            </button>
+                          )}
+                          <button
+                            onClick={() => printReceipt(payment)}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#28a745',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Print Receipt"
+                          >
+                            🖨️ Print
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
