@@ -6,9 +6,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class RedisTestService {
     
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     
-    public RedisTestService(RedisTemplate<String, Object> redisTemplate) {
+    public RedisTestService(org.springframework.data.redis.core.StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
     
@@ -18,6 +18,8 @@ public class RedisTestService {
             String value = (String) redisTemplate.opsForValue().get("test:connection");
             return "success".equals(value);
         } catch (Exception e) {
+            System.err.println("Redis test connection failed: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }

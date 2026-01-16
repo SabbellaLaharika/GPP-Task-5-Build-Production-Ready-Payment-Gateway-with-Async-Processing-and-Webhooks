@@ -17,6 +17,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
+    private final WebhookService webhookService; // injected as requiredArgsConstructor handles final fields
 
     @Transactional
     public Payment createPayment(Order order, Merchant merchant, String method, String vpa, 
@@ -37,7 +38,12 @@ public class PaymentService {
             payment.setCardLast4(cardLast4);
         }
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+        
+        // Trigger payment.created webhook
+        sendPaymentWebhook(savedPayment);
+        
+        return savedPayment;
     }
 
     @Transactional
@@ -132,5 +138,38 @@ public class PaymentService {
     private boolean getTestModeSuccess() {
         String testPaymentSuccess = System.getenv("TEST_PAYMENT_SUCCESS");
         return "true".equalsIgnoreCase(testPaymentSuccess);
+    }
+    
+    private void sendPaymentWebhook(Payment payment) {
+        try {
+            // "payment.created" event
+            java.util.Map<String, Object> paymentData = new java.util.HashMap<>();
+            paymentData.put("id", payment.getId());
+            paymentData.put("order_id", payment.getOrder().getId());
+            paymentData.put("amount", payment.getAmount());
+            paymentData.put("currency", payment.getCurrency());
+            paymentData.put("method", payment.getMethod());
+            paymentData.put("status", payment.getStatus()); // "pending"
+            paymentData.put("created_at", payment.getCreatedAt().toString());
+            
+            if (payment.getVpa() != null) {
+                paymentData.put("vpa", payment.getVpa());
+            }
+            if (payment.getCardNetwork() != null) {
+                paymentData.put("card_network", payment.getCardNetwork());
+                paymentData.put("card_last4", payment.getCardLast4());
+            }
+
+            // Send payment.created
+            webhookService.sendPaymentWebhook(java.util.UUID.fromString(payment.getMerchant().getId()), "payment.created", paymentData);
+            
+            // Send payment.pending matches "When payment enters pending state"
+            // Since it is pending immediately:
+            webhookService.sendPaymentWebhook(java.util.UUID.fromString(payment.getMerchant().getId()), "payment.pending", paymentData);
+
+        } catch (Exception e) {
+            // Log but don't fail the payment creation
+            System.err.println("Failed to send payment webhooks: " + e.getMessage());
+        }
     }
 }

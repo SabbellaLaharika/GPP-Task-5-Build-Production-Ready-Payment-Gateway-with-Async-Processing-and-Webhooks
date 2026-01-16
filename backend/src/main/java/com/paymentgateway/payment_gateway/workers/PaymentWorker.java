@@ -49,6 +49,13 @@ public class PaymentWorker {
     private final Random random = new Random();
     
     public void processPayments() {
+        log.info("PaymentWorker waiting for Redis...");
+        try {
+            Thread.sleep(5000); // Additional safety delay
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
         log.info("PaymentWorker started");
         
         while (true) {

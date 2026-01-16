@@ -20,6 +20,13 @@ public class WebhookWorker {
     private WebhookService webhookService;
     
     public void processWebhooks() {
+        log.info("WebhookWorker waiting for Redis...");
+        try {
+            Thread.sleep(5000); // Additional safety delay
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
         log.info("WebhookWorker started");
         
         while (true) {

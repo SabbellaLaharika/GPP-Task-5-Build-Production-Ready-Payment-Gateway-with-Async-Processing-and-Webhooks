@@ -15,6 +15,12 @@ import java.util.Map;
 public class TestController {
 
     private final MerchantService merchantService;
+    private final com.paymentgateway.payment_gateway.queue.JobQueue jobQueue;
+
+    @GetMapping("/jobs/status")
+    public ResponseEntity<Map<String, Object>> getJobQueueStatus() {
+        return ResponseEntity.ok(jobQueue.getQueueStats());
+    }
 
     // Get test merchant details (no auth required)
     @GetMapping("/merchant")

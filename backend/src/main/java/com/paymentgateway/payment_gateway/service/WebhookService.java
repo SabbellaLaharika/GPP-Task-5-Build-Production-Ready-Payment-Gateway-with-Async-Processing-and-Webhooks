@@ -242,4 +242,43 @@ public class WebhookService {
             log.error("Failed to create refund webhook", e);
         }
     }
+    // Get webhook logs with pagination
+    public org.springframework.data.domain.Page<WebhookLog> getWebhookLogs(int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
+        return webhookLogRepository.findAll(pageable);
+    }
+
+    // Retry webhook manually
+    public WebhookLog retryWebhook(UUID webhookId) {
+        Optional<WebhookLog> webhookOpt = webhookLogRepository.findById(webhookId);
+        
+        if (webhookOpt.isEmpty()) {
+            throw new RuntimeException("Webhook log not found: " + webhookId);
+        }
+        
+        WebhookLog webhook = webhookOpt.get();
+        
+        // Reset check
+        webhook.setAttempts(0);
+        webhook.setStatus("pending");
+        webhook.setNextRetryAt(null);
+        webhook.setResponseBody(null);
+        webhook.setResponseCode(null);
+        
+        webhookLogRepository.save(webhook);
+        
+        // Re-enqueue
+        DeliverWebhookJob job = new DeliverWebhookJob(
+            webhook.getMerchantId(), 
+            webhook.getEvent(), 
+            webhook.getPayload()
+        );
+        job.setAttempts(0); // Explicitly 0
+        
+        jobQueue.enqueueWebhookJob(job);
+        
+        log.info("Manually triggered retry for webhook: {}", webhookId);
+        
+        return webhook;
+    }
 }

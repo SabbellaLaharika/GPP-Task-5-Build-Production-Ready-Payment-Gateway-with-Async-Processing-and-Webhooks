@@ -44,7 +44,7 @@ services:
       dockerfile: Dockerfile
     container_name: payment_gateway_with_webhooks_backend
     ports:
-      - "8010:8000"
+      - "8000:8000"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payment_gateway
       - SPRING_DATASOURCE_USERNAME=gateway_user

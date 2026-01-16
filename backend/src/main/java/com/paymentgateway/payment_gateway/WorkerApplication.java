@@ -39,11 +39,24 @@ public class WorkerApplication {
             JobQueue jobQueue) {
         
         return args -> {
+            String workerMode = System.getenv("WORKER_MODE");
+            if (!"true".equals(workerMode)) {
+                return; // Do not start workers in non-worker mode (e.g. Backend API)
+            }
+
             log.info("=================================================");
             log.info("WORKER APPLICATION STARTED");
             log.info("=================================================");
             
-            jobQueue.updateWorkerStatus("running");
+            try {
+                // Global wait for Redis to be fully ready
+                log.info("Waiting for Redis to initialize...");
+                Thread.sleep(15000); 
+                
+                jobQueue.updateWorkerStatus("running");
+            } catch (Exception e) {
+                log.error("Failed to update worker status or wait interrupted", e);
+            }
             
             ExecutorService executorService = Executors.newFixedThreadPool(3);
             
