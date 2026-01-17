@@ -27,8 +27,3 @@
 - Dashboard & Checkout UI
 - Payment validation
 - Docker deployment
-
----
-
-             (copied, no changes)
-        └── docker-compose.yml                   (copied + Redis added)
