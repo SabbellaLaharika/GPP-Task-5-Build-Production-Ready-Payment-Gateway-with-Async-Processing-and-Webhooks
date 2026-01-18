@@ -1,10 +1,9 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: payment_gateway_with_webhooks_db
+    container_name: pg_gateway
     environment:
       POSTGRES_DB: payment_gateway
       POSTGRES_USER: gateway_user
@@ -18,13 +17,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - payment-network
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: payment_gateway_with_webhooks_redis
+    container_name: redis_gateway
     ports:
       - "6379:6379"
     volumes:
@@ -32,27 +28,25 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 5
-    networks:
-      - payment-network
 
-  # Backend API
-  backend:
+  api:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: payment_gateway_with_webhooks_backend
+      target: api
+    container_name: gateway_api
     ports:
       - "8000:8000"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payment_gateway
-      - SPRING_DATASOURCE_USERNAME=gateway_user
-      - SPRING_DATASOURCE_PASSWORD=gateway_pass
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_REDIS_HOST=redis
-      - SPRING_REDIS_PORT=6379
-      - REDIS_URL=redis://redis:6379
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_gateway
+      SPRING_DATASOURCE_USERNAME: gateway_user
+      SPRING_DATASOURCE_PASSWORD: gateway_pass
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      #REDIS_URL : redis://redis:6379
+      PORT: 8000
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,70 +58,52 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - payment-network
-    restart: unless-stopped
-
-  # Background Worker (🆕 NEW for Task 5)
+    restart: unless-stopped   
   worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile.worker
-    container_name: payment_gateway_with_webhooks_worker
+      dockerfile: Dockerfile
+      target: worker
+    container_name: gateway_worker
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payment_gateway
-      - SPRING_DATASOURCE_USERNAME=gateway_user
-      - SPRING_DATASOURCE_PASSWORD=gateway_pass
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_REDIS_HOST=redis
-      - SPRING_REDIS_PORT=6379
-      - REDIS_URL=redis://redis:6379
-      - WORKER_MODE=true
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_gateway
+      SPRING_DATASOURCE_USERNAME: gateway_user
+      SPRING_DATASOURCE_PASSWORD: gateway_pass
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      #REDIS_URL: redis://redis:6379
+      WORKER_MODE: true
+
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      backend:
+      api:
         condition: service_healthy
-    networks:
-      - payment-network
-    restart: unless-stopped
 
-  # Frontend Dashboard
-  frontend:
+  dashboard:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: payment_gateway_with_webhooks_frontend
+    container_name: gateway_dashboard
     ports:
-      - "3000:3000"
+      - "3000:80"
     depends_on:
-      - backend
-    networks:
-      - payment-network
+      - api
     restart: unless-stopped
 
-  # Checkout Page
   checkout:
     build:
       context: ./checkout-page
       dockerfile: Dockerfile
-    container_name: payment_gateway_with_webhooks_checkout
+    container_name: gateway_checkout
     ports:
-      - "3001:3001"
+      - "3001:80"
     depends_on:
-      - backend
-    networks:
-      - payment-network
+      - api
     restart: unless-stopped
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
-
-networks:
-  payment-network:
-    driver: bridge
