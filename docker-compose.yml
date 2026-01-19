@@ -31,6 +31,7 @@ services:
       timeout: 3s
       retries: 5
 
+  # Node.js API Service
   api:
     build:
       context: ./backend
@@ -40,25 +41,23 @@ services:
     ports:
       - "8000:8000"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_gateway
-      SPRING_DATASOURCE_USERNAME: gateway_user
-      SPRING_DATASOURCE_PASSWORD: gateway_pass
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      #REDIS_URL : redis://redis:6379
+      DATABASE_URL: postgresql://gateway_user:gateway_pass@postgres:5432/payment_gateway
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       PORT: 8000
+      NODE_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    restart: unless-stopped   
+    restart: unless-stopped
+
   worker:
     build:
       context: ./backend
@@ -66,22 +65,18 @@ services:
       target: worker
     container_name: gateway_worker
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_gateway
-      SPRING_DATASOURCE_USERNAME: gateway_user
-      SPRING_DATASOURCE_PASSWORD: gateway_pass
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      #REDIS_URL: redis://redis:6379
-      WORKER_MODE: true
-
+      DATABASE_URL: postgresql://gateway_user:gateway_pass@postgres:5432/payment_gateway
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NODE_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      api:
-        condition: service_healthy
+    restart: unless-stopped
 
+  # React Dashboard
   dashboard:
     build:
       context: ./frontend
@@ -93,6 +88,7 @@ services:
       - api
     restart: unless-stopped
 
+  # Checkout Page
   checkout:
     build:
       context: ./checkout-page

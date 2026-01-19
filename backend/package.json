@@ -9,7 +9,8 @@
         "build": "tsc",
         "lint": "eslint src/**/*",
         "migrate": "node run_migrations.js",
-        "seed": "node run_seed_data.js"
+        "seed": "node run_seed_data.js",
+        "worker:dev": "nodemon src/worker-entry.ts"
     },
     "keywords": [],
     "author": "",
