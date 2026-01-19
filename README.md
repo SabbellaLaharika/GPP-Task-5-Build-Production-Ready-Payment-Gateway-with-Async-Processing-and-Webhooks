@@ -2,7 +2,7 @@
 
 🚀 **Extension of Task 4** - Adds async processing, webhooks, and production features
 
-**Base Repository (Task 4):** [Link to Task 4 repo]
+**Base Repository (Task 4):** [[Link to Task 4 repo](https://github.com/SabbellaLaharika/GPP-Task-4-Build-Payment-Gateway-with-Multi-Method-Processing-and-Hosted-Checkout)]
 
 ## What's New in Task 5
 
@@ -27,28 +27,3 @@
 - Dashboard & Checkout UI
 - Payment validation
 - Docker deployment
-
----
-
-[Rest of README...]
-```
-
----
-
-## 🎯 **Your Final Structure:**
-```
-D:\GPP\
-├── task4\
-│   └── GPP-Task-4-Build-Payment-Gateway.../    ✅ DONE - Don't touch
-│       ├── .git/                                (GitHub Repo 1)
-│       ├── backend/
-│       ├── frontend/
-│       └── docker-compose.yml
-│
-└── task5\
-    └── GPP-Task-5-Production-Ready-Gateway.../  🆕 NEW - We'll work here
-        ├── .git/                                (GitHub Repo 2)
-        ├── backend/                             (copied + extended)
-        ├── frontend/                            (copied + minor updates)
-        ├── checkout-page/                       (copied, no changes)
-        └── docker-compose.yml                   (copied + Redis added)
