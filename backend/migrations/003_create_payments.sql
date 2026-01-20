@@ -13,6 +13,7 @@ CREATE TABLE payments (
     amount INTEGER NOT NULL, -- Amount in smallest currency unit
     currency CHAR(3) DEFAULT 'INR' NOT NULL,
     method VARCHAR(20) NOT NULL CHECK (method IN ('upi', 'card')),
+    captured BOOLEAN DEFAULT FALSE,
     status VARCHAR(20) DEFAULT 'created' NOT NULL, -- Initial status, usually updates to 'processing' immediately
     vpa VARCHAR(255), -- Only for UPI
     card_network VARCHAR(20) CHECK (card_network IN ('visa', 'mastercard', 'amex', 'rupay', 'unknown')), -- Only for card

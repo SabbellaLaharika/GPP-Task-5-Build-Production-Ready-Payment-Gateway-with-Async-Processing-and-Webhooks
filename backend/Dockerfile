@@ -12,6 +12,8 @@ COPY . .
 
 # Build TypeScript
 RUN npm run build
+CMD ["node", "run-migrations.js"]
+CMD ["node", "run-seed-data.js"]
 
 # API Target
 FROM base AS api

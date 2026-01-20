@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import redis from './config/redis';
 import { paymentWorker } from './workers/paymentWorker';
 import { webhookWorker } from './workers/webhookWorker';
 import { refundWorker } from './workers/refundWorker';
@@ -22,6 +23,16 @@ workers.forEach(worker => {
         console.error(`[${job?.queueName}] Job ${job?.id} failed: ${err.message}`);
     });
 });
+
+// Heartbeat Loop (Update every 10 seconds)
+const HEARTBEAT_KEY = 'worker:heartbeat';
+setInterval(async () => {
+    try {
+        await redis.set(HEARTBEAT_KEY, new Date().toISOString(), 'EX', 60); // Expire in 60s if worker dies hard
+    } catch (error) {
+        console.error('Failed to update worker heartbeat:', error);
+    }
+}, 10000);
 
 // Keep process alive
 process.on('SIGTERM', async () => {
