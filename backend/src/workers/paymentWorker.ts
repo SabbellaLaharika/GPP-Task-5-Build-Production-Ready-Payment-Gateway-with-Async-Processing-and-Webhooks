@@ -69,14 +69,27 @@ export const paymentWorker = new Worker(PAYMENT_QUEUE_NAME, async (job: Job<Paym
 
         // 5. Enqueue Webhook
         const eventType = success ? 'payment.success' : 'payment.failed';
+
         await webhookQueue.add('deliver-webhook', {
             merchantId: payment.merchant_id,
             event: eventType,
             payload: {
-                payment_id: payment.id,
-                amount: payment.amount,
-                status: newStatus,
-                order_id: payment.order_id
+                event: eventType,
+                timestamp: Math.floor(Date.now() / 1000),
+                data: {
+                    payment: {
+                        id: payment.id,
+                        order_id: payment.order_id,
+                        amount: payment.amount,
+                        currency: payment.currency,
+                        status: newStatus,
+                        method: payment.method,
+                        error_code: success ? null : 'PAYMENT_FAILED',
+                        error_description: errorDescription,
+                        created_at: payment.created_at,
+                        updated_at: processedAt
+                    }
+                }
             }
         });
 

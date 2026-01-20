@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { query } from '../config/db';
 import { v4 as uuidv4 } from 'uuid';
-import { paymentQueue } from '../config/queue';
+import { paymentQueue, webhookQueue } from '../config/queue';
 import { validateVPA, validateLuhn, detectCardNetwork, validateExpiry } from '../utils/validation';
 
 const generatePaymentId = () => {
@@ -129,6 +129,42 @@ export const createPayment = async (req: Request, res: Response) => {
 
         // 5. Trigger Background Job
         await paymentQueue.add('process-payment', { paymentId: payment.id });
+
+        // 6. Trigger Webhooks (payment.created, payment.pending)
+        const commonPayload = {
+            id: payment.id,
+            order_id: payment.order_id,
+            amount: payment.amount,
+            currency: payment.currency,
+            method: payment.method,
+            status: payment.status,
+            created_at: payment.created_at,
+            vpa: payment.vpa,
+            card_network: payment.card_network,
+            card_last4: payment.card_last4
+        };
+
+        // Emit payment.created
+        await webhookQueue.add('deliver-webhook', {
+            merchantId: merchant.id,
+            event: 'payment.created',
+            payload: {
+                event: 'payment.created',
+                timestamp: Math.floor(Date.now() / 1000),
+                data: { payment: commonPayload }
+            }
+        });
+
+        // Emit payment.pending
+        await webhookQueue.add('deliver-webhook', {
+            merchantId: merchant.id,
+            event: 'payment.pending',
+            payload: {
+                event: 'payment.pending',
+                timestamp: Math.floor(Date.now() / 1000),
+                data: { payment: commonPayload }
+            }
+        });
 
         // 6. Return Response
         const responseData: any = {

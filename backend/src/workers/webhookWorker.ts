@@ -14,6 +14,7 @@ interface WebhookJobData {
 }
 
 const generateSignature = (payload: any, secret: string) => {
+    // Requirement: Use JSON string representation of payload exactly as sent
     const data = JSON.stringify(payload);
     return crypto.createHmac('sha256', secret).update(data).digest('hex');
 };
@@ -154,8 +155,6 @@ export const webhookWorker = new Worker(WEBHOOK_QUEUE_NAME, async (job: Job<Webh
 
     } catch (error) {
         console.error(`[WebhookWorker] Critical Error:`, error);
-        // If critical error (e.g. DB fail), BullMQ will retry standardly, or we can handle it. 
-        // Ideally we shouldn't throw here if we want to control the custom retry logic above.
-        // But if DB fails, we might want standard retry.
+        throw error;
     }
 }, { connection: connection as any });

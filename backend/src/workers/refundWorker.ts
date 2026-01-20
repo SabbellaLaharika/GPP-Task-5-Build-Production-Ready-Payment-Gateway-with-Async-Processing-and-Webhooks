@@ -81,14 +81,24 @@ export const refundWorker = new Worker(REFUND_QUEUE_NAME, async (job: Job<Refund
 
         // 6. Enqueue Webhook
         console.log(`[RefundWorker] Refund processed. Enqueueing webhook.`);
+
         await webhookQueue.add('deliver-webhook', {
             merchantId: refund.merchant_id,
             event: 'refund.processed',
             payload: {
-                refund_id: refund.id,
-                payment_id: refund.payment_id,
-                amount: refund.amount,
-                status: 'processed'
+                event: 'refund.processed',
+                timestamp: Math.floor(Date.now() / 1000),
+                data: {
+                    refund: {
+                        id: refund.id,
+                        payment_id: refund.payment_id,
+                        amount: refund.amount,
+                        status: 'processed',
+                        reason: refund.reason,
+                        created_at: refund.created_at,
+                        processed_at: new Date()
+                    }
+                }
             }
         });
 

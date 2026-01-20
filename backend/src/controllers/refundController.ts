@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { query } from '../config/db';
 import { v4 as uuidv4 } from 'uuid';
-import { refundQueue } from '../config/queue';
+import { refundQueue, webhookQueue } from '../config/queue';
 
 const generateRefundId = () => {
     const randomChars = uuidv4().replace(/-/g, '').substring(0, 16);
@@ -79,6 +79,26 @@ export const createRefund = async (req: Request, res: Response) => {
 
         // 5. Enqueue Job
         await refundQueue.add('process-refund', { refundId: refund.id });
+
+        // 6. Emit Webhook (refund.created)
+        await webhookQueue.add('deliver-webhook', {
+            merchantId: merchant.id,
+            event: 'refund.created',
+            payload: {
+                event: 'refund.created',
+                timestamp: Math.floor(Date.now() / 1000),
+                data: {
+                    refund: {
+                        id: refund.id,
+                        payment_id: refund.payment_id,
+                        amount: refund.amount,
+                        status: refund.status,
+                        reason: refund.reason,
+                        created_at: refund.created_at
+                    }
+                }
+            }
+        });
 
         // 6. Response
         res.status(201).json(refund);
