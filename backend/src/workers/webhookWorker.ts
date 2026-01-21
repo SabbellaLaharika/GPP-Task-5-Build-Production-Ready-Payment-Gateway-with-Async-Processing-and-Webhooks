@@ -61,12 +61,7 @@ export const webhookWorker = new Worker(WEBHOOK_QUEUE_NAME, async (job: Job<Webh
         }
         const { webhook_url, webhook_secret } = merchantResult.rows[0];
 
-        if (!webhook_url) {
-            console.log(`[WebhookWorker] No webhook URL configured for merchant ${merchantId}`);
-            return; // specific requirement: "skip if NULL"
-        }
-
-        // 2. Create/Update Webhook Log
+        // 2. Create/Update Webhook Log (MOVED UP)
         if (!logId) {
             // First attempt, create log
             const logResult = await query(
@@ -79,6 +74,17 @@ export const webhookWorker = new Worker(WEBHOOK_QUEUE_NAME, async (job: Job<Webh
         } else {
             // Retry attempt, update attempts count
             await query('UPDATE webhook_logs SET attempts = $1, updated_at = NOW() WHERE id = $2', [attemptNumber, logId]);
+        }
+
+        if (!webhook_url) {
+            console.log(`[WebhookWorker] No webhook URL configured for merchant ${merchantId}`);
+            await query(
+                `UPDATE webhook_logs 
+                 SET status = 'failed', response_code = 400, response_body = 'No webhook URL configured', last_attempt_at = NOW(), updated_at = NOW() 
+                 WHERE id = $1`,
+                [logId]
+            );
+            return;
         }
 
         // 3. Generate Signature

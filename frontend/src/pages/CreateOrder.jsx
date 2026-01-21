@@ -3,6 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import { TEST_MERCHANT } from '../services/api';
 import axios from 'axios';
 
+const loadSdk = () => {
+  return new Promise((resolve) => {
+    if (window.PaymentGateway) { // Already loaded
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'http://localhost:3001/checkout.js';
+    script.onload = () => {
+      resolve(true);
+    };
+    script.onerror = () => {
+      console.error('Failed to load SDK script');
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+};
+
 function CreateOrder() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -11,12 +30,15 @@ function CreateOrder() {
     receipt: '',
     notes: ''
   });
+
   useEffect(() => {
-  const email = localStorage.getItem('merchantEmail');
-  if (!email) {
-    navigate('/login');
-  }
-}, [navigate]);
+    const email = localStorage.getItem('merchantEmail');
+    if (!email) {
+      navigate('/login');
+    }
+    // Preload SDK
+    loadSdk();
+  }, [navigate]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -35,7 +57,6 @@ function CreateOrder() {
     setLoading(true);
 
     try {
-      // Convert rupees to paise (multiply by 100)
       const amountInPaise = Math.round(parseFloat(formData.amount) * 100);
 
       if (amountInPaise < 100) {
@@ -62,10 +83,9 @@ function CreateOrder() {
       );
 
       setOrderCreated(response.data);
-      
+
     } catch (err) {
       setError(err.response?.data?.description || 'Failed to create order. Please try again.');
-      console.error('Error creating order:', err);
     } finally {
       setLoading(false);
     }
@@ -76,9 +96,29 @@ function CreateOrder() {
     navigate('/login');
   };
 
-  const openCheckout = () => {
-    const checkoutUrl = `http://localhost:3001?order_id=${orderCreated.id}`;
-    window.open(checkoutUrl, '_blank');
+  const openSdk = async () => {
+    const loaded = await loadSdk();
+    if (!loaded) {
+      alert('Failed to load Payment SDK. Please try again or check your connection.');
+      return;
+    }
+
+    const checkout = new window.PaymentGateway({
+      key: TEST_MERCHANT.apiKey,
+      orderId: orderCreated.id,
+      onSuccess: (response) => {
+        console.log('Payment Success:', response);
+        alert(`Payment Success! Payment ID: ${response.payment_id}`);
+        // Optionally redirect to transactions or refresh
+        navigate('/dashboard/transactions');
+      },
+      onFailure: (error) => {
+        console.log('Payment Failed:', error);
+        const errorMessage = error.message || error.error || error.description || (typeof error === 'string' ? error : JSON.stringify(error));
+        alert(`Payment Failed: ${errorMessage}`);
+      }
+    });
+    checkout.open();
   };
 
   const copyCheckoutLink = () => {
@@ -96,16 +136,16 @@ function CreateOrder() {
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         marginBottom: '30px'
       }}>
-        <div style={{ 
-          maxWidth: '1200px', 
+        <div style={{
+          maxWidth: '1200px',
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <Link 
-              to="/dashboard" 
+            <Link
+              to="/dashboard"
               style={{
                 textDecoration: 'none',
                 color: '#007bff',
@@ -116,7 +156,7 @@ function CreateOrder() {
             </Link>
             <h1 style={{ margin: 0 }}>Create New Order</h1>
           </div>
-          <button 
+          <button
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
@@ -141,7 +181,7 @@ function CreateOrder() {
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}>
             <h2 style={{ marginBottom: '20px' }}>Order Details</h2>
-            
+
             {error && (
               <div style={{
                 padding: '12px',
@@ -337,26 +377,11 @@ function CreateOrder() {
                   {orderCreated.status}
                 </div>
               </div>
-
-              <div>
-                <strong>Checkout Link:</strong>
-                <div style={{
-                  padding: '10px',
-                  backgroundColor: 'white',
-                  borderRadius: '4px',
-                  marginTop: '5px',
-                  fontFamily: 'monospace',
-                  fontSize: '12px',
-                  wordBreak: 'break-all'
-                }}>
-                  http://localhost:3001?order_id={orderCreated.id}
-                </div>
-              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
-                onClick={openCheckout}
+                onClick={openSdk}
                 style={{
                   padding: '12px',
                   backgroundColor: '#007bff',
@@ -368,7 +393,7 @@ function CreateOrder() {
                   cursor: 'pointer'
                 }}
               >
-                Open Checkout Page
+                Pay Now (with SDK)
               </button>
 
               <button

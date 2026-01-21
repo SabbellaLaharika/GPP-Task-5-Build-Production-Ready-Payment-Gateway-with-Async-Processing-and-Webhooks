@@ -21,6 +21,10 @@ export const paymentWorker = new Worker(PAYMENT_QUEUE_NAME, async (job: Job<Paym
         }
         const payment = paymentResult.rows[0];
 
+        // 1.1 Update status to 'processing'
+        await query('UPDATE payments SET status = $1 WHERE id = $2', ['processing', paymentId]);
+        console.log(`[PaymentWorker] Payment ${paymentId} processing...`);
+
         // 2. Simulate Delay
         const isTestMode = process.env.TEST_MODE === 'true';
         let delay = Math.floor(Math.random() * 5000) + 5000; // 5-10 seconds

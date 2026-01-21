@@ -7,6 +7,7 @@ import paymentRoutes from './routes/paymentRoutes';
 import refundRoutes from './routes/refundRoutes';
 import testRoutes from './routes/testRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import merchantRoutes from './routes/merchantRoutes';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/refunds', refundRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);
+app.use('/api/v1/merchant', merchantRoutes);
 app.use('/api/v1/test', testRoutes);
 
 app.listen(PORT, () => {

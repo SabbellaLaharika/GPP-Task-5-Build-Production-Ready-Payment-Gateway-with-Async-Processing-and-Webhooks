@@ -17,30 +17,28 @@ async function seedData() {
             email: 'test@example.com',
             api_key: 'key_test_abc123',
             api_secret: 'secret_test_xyz789',
-            webhook_secret: 'whsec_test_abc123'
+            webhook_secret: 'whsec_test_abc123',
+            webhook_url: 'http://host.docker.internal:4000/webhook'
         };
 
-        // Check if merchant exists
-        const checkRes = await client.query('SELECT id FROM merchants WHERE email = $1', [testMerchant.email]);
-
-        if (checkRes.rows.length > 0) {
-            console.log('⚠️  Test merchant already exists. Skipping insertion.');
-        } else {
-            console.log('🌱 Inserting test merchant...');
-            await client.query(
-                `INSERT INTO merchants (id, name, email, api_key, api_secret, webhook_secret)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [
-                    testMerchant.id,
-                    testMerchant.name,
-                    testMerchant.email,
-                    testMerchant.api_key,
-                    testMerchant.api_secret,
-                    testMerchant.webhook_secret
-                ]
-            );
-            console.log('✅ Test merchant created successfully');
-        }
+        // Upsert Merchant
+        console.log('🌱 Upserting test merchant...');
+        await client.query(
+            `INSERT INTO merchants (id, name, email, api_key, api_secret, webhook_secret, webhook_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (email) 
+             DO UPDATE SET webhook_url = EXCLUDED.webhook_url, webhook_secret =COALESCE(merchants.webhook_secret, EXCLUDED.webhook_secret)`,
+            [
+                testMerchant.id,
+                testMerchant.name,
+                testMerchant.email,
+                testMerchant.api_key,
+                testMerchant.api_secret,
+                testMerchant.webhook_secret,
+                testMerchant.webhook_url
+            ]
+        );
+        console.log('✅ Test merchant upserted successfully');
 
     } catch (err) {
         console.error('❌ Seeding failed:', err);

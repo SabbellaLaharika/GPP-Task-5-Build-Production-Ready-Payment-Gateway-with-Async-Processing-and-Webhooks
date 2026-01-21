@@ -86,18 +86,20 @@ function App() {
 
     try {
       const paymentData = {
-        orderId: orderId,
+        order_id: orderId,
         method: paymentMethod
       };
 
       if (paymentMethod === 'upi') {
         paymentData.vpa = vpa;
       } else if (paymentMethod === 'card') {
-        paymentData.cardNumber = cardNumber;
-        paymentData.expiryMonth = expiryMonth;
-        paymentData.expiryYear = expiryYear;
-        paymentData.cvv = cvv;
-        paymentData.holderName = holderName;
+        paymentData.card = {
+          number: cardNumber.replace(/\s/g, ''), // Remove spaces if any
+          expiry_month: expiryMonth,
+          expiry_year: expiryYear,
+          cvv: cvv,
+          holder_name: holderName
+        };
       }
 
       const response = await axios.post(`${API_BASE_URL}/api/v1/payments`, paymentData, {
@@ -109,6 +111,7 @@ function App() {
       });
 
       setPaymentId(response.data.id);
+      console.log(response.data);
       setPaymentStatus(response.data.status);
 
       // Poll for payment status
@@ -120,7 +123,7 @@ function App() {
       console.error('Error processing payment:', err);
 
       sendMessageToParent('payment_failed', {
-        error: err.response?.data?.description || 'Payment failed'
+        message: err.response?.data?.description || 'Payment failed'
       });
     }
   };
@@ -146,7 +149,7 @@ function App() {
           setProcessingPayment(false);
           sendMessageToParent('payment_failed', {
             paymentId: response.data.id,
-            error: 'Payment processing failed'
+            message: 'Payment processing failed'
           });
         }
       } catch (err) {
@@ -318,8 +321,11 @@ function App() {
         <div data-test-id="success-state" className="success-container">
           <div className="success-icon">✓</div>
           <h2>Payment Successful!</h2>
-          <p data-test-id="payment-id">Payment ID: {paymentId}</p>
-          <p data-test-id="success-message">Your payment has been processed successfully.</p>
+          <div>
+            <span>Payment ID: </span>
+            <span data-test-id="payment-id">{paymentId}</span>
+          </div>
+          <span data-test-id="success-message">Your payment has been processed successfully.</span>
 
           {/* Add Print Receipt Button */}
           <button
@@ -354,7 +360,7 @@ function App() {
           <div className="error-icon">✗</div>
           <h2>Payment Failed</h2>
           <p data-test-id="payment-id">Payment ID: {paymentId}</p>
-          <p data-test-id="error-message">Payment could not be processed. Please try again.</p>
+          <span data-test-id="error-message">Payment could not be processed. Please try again.</span>
           <button
             data-test-id="retry-button"
             onClick={() => {
@@ -376,7 +382,7 @@ function App() {
         <div data-test-id="processing-state" className="processing-container">
           <div className="spinner"></div>
           <h2>Processing payment...</h2>
-          <p data-test-id="processing-message">Please wait while we process your payment.</p>
+          <span data-test-id="processing-message">Please wait while we process your payment.</span>
         </div>
       </div>
     );
@@ -427,6 +433,7 @@ function App() {
             <div className="method-buttons">
               <button
                 data-test-id="method-upi"
+                data-method="upi"
                 onClick={() => setPaymentMethod('upi')}
                 className="method-button"
               >
@@ -435,6 +442,7 @@ function App() {
               </button>
               <button
                 data-test-id="method-card"
+                data-method="card"
                 onClick={() => setPaymentMethod('card')}
                 className="method-button"
               >

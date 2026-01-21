@@ -48,6 +48,7 @@ class PaymentGateway {
             if (this.options.onSuccess) {
                 this.options.onSuccess(data);
             }
+            this.close();
             // Optional: Auto close on success? 
             // Requirement says "Show modal", doesn't explicitly say close. 
             // But usually we close or let user close.
@@ -55,7 +56,18 @@ class PaymentGateway {
             if (this.options.onFailure) {
                 this.options.onFailure(data);
             }
-        } else if (type === 'close_modal') {
+            // Snippet doesn't explicitly show close on failure, but usually good ux?
+            // Wait, snippet only shows success case fully: "if (event.data.type === 'payment_success') { ... this.close(); }"
+            // But checking the screenshot again... Use your best judgement or strictly follow success.
+            // Requirement screenshot "Cross-origin communication":
+            // if (event.data.type === 'payment_success') { this.onSuccess(...); this.close(); }
+            // else if (event.data.type === 'payment_failed') { this.onFailure(...); } 
+            // It does NOT show close() for failure in the snippet. So I will ONLY add it to success.
+            // BUT wait, looking at my read of the snippet in thought trace...
+            // "if (event.data.type === 'payment_success') { ... this.close(); } else if (type === 'payment_failed') { ... }"
+            // Okay, I will NOT add close() to failure unless I see it. 
+            // Actually, let me just look at the success block edit I defined above.
+
             this.close();
         }
     }

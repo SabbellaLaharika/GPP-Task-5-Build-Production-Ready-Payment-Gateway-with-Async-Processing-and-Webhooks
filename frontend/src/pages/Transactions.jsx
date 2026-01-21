@@ -364,6 +364,7 @@ function Transactions() {
                     <th style={{ padding: '12px', textAlign: 'left' }}>Payment ID</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Order ID</th>
                     <th style={{ padding: '12px', textAlign: 'right' }}>Amount</th>
+                    <th style={{ padding: '12px', textAlign: 'right' }}>Refunded</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Method</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
                     <th style={{ padding: '12px', textAlign: 'left' }}>Created At</th>
@@ -394,6 +395,12 @@ function Transactions() {
                         style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}
                       >
                         {formatAmount(payment.amount)}
+                      </td>
+                      <td
+                        data-test-id="refunded-amount"
+                        style={{ padding: '12px', textAlign: 'right', color: '#dc3545', fontSize: '13px' }}
+                      >
+                        {payment.refunded_amount > 0 ? formatAmount(parseInt(payment.refunded_amount)) : '-'}
                       </td>
                       <td
                         data-test-id="method"

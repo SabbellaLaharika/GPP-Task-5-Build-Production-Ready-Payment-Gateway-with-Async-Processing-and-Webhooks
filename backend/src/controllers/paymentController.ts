@@ -54,6 +54,25 @@ export const createPayment = async (req: Request, res: Response) => {
                 });
             }
             order = orderResult.rows[0];
+
+            // 1.1 Check for existing payments for this order
+            // Requirement: Block creation if payment is 'pending' or 'success'. Allow if 'failed'.
+            const existingPaymentResult = await query(
+                `SELECT id, status FROM payments 
+                 WHERE order_id = $1 
+                 AND status IN ('pending', 'processing', 'success')`,
+                [order_id]
+            );
+
+            if (existingPaymentResult.rows.length > 0) {
+                return res.status(400).json({
+                    error: {
+                        code: 'BAD_REQUEST_ERROR',
+                        description: `Order already has a payment in ${existingPaymentResult.rows[0].status} status`
+                    }
+                });
+            }
+
         } catch (error) {
             return res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', description: 'DB Error' } });
         }
@@ -259,6 +278,25 @@ export const capturePayment = async (req: Request, res: Response) => {
 
     } catch (error) {
         console.error('Capture Error:', error);
+        res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', description: 'Internal Server Error' } });
+    }
+};
+
+export const getPayments = async (req: Request, res: Response) => {
+    const merchant = req.merchant;
+
+    try {
+        const result = await query(
+            `SELECT p.*, 
+                    COALESCE((SELECT SUM(amount) FROM refunds r WHERE r.payment_id = p.id AND r.status = 'processed'), 0) as refunded_amount
+             FROM payments p 
+             WHERE p.merchant_id = $1 
+             ORDER BY p.created_at DESC`,
+            [merchant.id]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('List Payments Error:', error);
         res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', description: 'Internal Server Error' } });
     }
 };
